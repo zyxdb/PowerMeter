@@ -1,0 +1,339 @@
+#include "stdafx.h"
+#include "windows.h"
+#include "PowerMeter.h"
+#include "commons.h"
+#include "PowerMeterLib.h"
+#include "PowerMeterDlg.h"
+
+void SelfCheckThread(LPVOID lpParameter)
+{
+	CPowerMeterDlg *pdlgMain = (CPowerMeterDlg *)lpParameter;
+	
+	do {
+		if (pdlgMain->m_iSelfChecking != 1) break;;
+		TRACE("电桥通信正常\n");
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("电桥通信正常"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("电桥通信正常"));
+		Sleep(2000);
+		if (pdlgMain->m_iSelfChecking != 1) break;;
+		TRACE("万用表通信正常\n");
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("万用表通信正常"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("万用表通信正常"));
+		Sleep(2000);
+		if (pdlgMain->m_iSelfChecking != 1) break;;
+		TRACE("快门通信正常\n");
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("快门通信正常"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("快门通信正常"));
+		Sleep(2000);
+		if (pdlgMain->m_iSelfChecking != 1) break;;
+		TRACE("外部协作端口正常\n");
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("外部协作端口正常"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("外部协作端口正常"));
+		Sleep(2000);
+		if (pdlgMain->m_iSelfChecking != 1) break;;
+		TRACE("PSD通信正常\n");
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("PSD通信正常"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("PSD通信正常"));
+		Sleep(2000);
+		pdlgMain->PostMessage(WM_THREAD, THREAD_SELFCHECK_STATUS, THREAD_STATE_SUCCESS);
+	} while (0);
+	if (pdlgMain->m_iSelfChecking != 1) pdlgMain->PostMessage(WM_THREAD, THREAD_SELFCHECK_STATUS, THREAD_STATE_TERMINATED);
+}
+
+MeasureData gMeasureData[4];
+MeasureData WaitforStable(CPowerMeterDlg *pdlgMain,DWORD dwStart,BOOL bElectricEnable=FALSE)
+{
+	CString  csString;
+	SYSTEMTIME sysTime;
+	LPARAM  lParam = LPARAM(THREAD_STATE_SUCCESS);
+	double dbPidStability = 1, dbHeaterStability = 1;
+	DWORD dwTimeBegin, dwTimePeriod;
+	dwTimeBegin = GetTickCount();
+	while (pdlgMain->m_bInMesuring)
+	{
+		TRACE(_T("测电流电压热阻"));
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("测电流电压热阻"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("测电流电压热阻"));
+		GetLocalTime(&sysTime);
+		gMeasureData[0].bFlag = (1 << LineSerie_Temperature) |
+			(1 << LineSerie_Voltage) |
+			(1 << LineSerie_OutputCurrent);
+		gMeasureData[0].dwIdex = GetTickCount() / 100 - dwStart;
+		gMeasureData[0].dbTemperature = rand();
+		gMeasureData[0].dbVoltage = rand();
+		gMeasureData[0].dbOutputCurrent = pdlgMain->m_dbOutputCurrent;
+		gMeasureData[0].bState = 0;
+		pdlgMain->PostMessage(WM_THREAD, THREAD_MEASURE_DATA, LPARAM(&(gMeasureData[0])));
+
+		if (bElectricEnable)
+		{
+			dwTimePeriod = GetTickCount() - dwTimeBegin;
+			if (dwTimePeriod > pdlgMain->m_dbPidStableTime)
+			{
+				//dbPidStability=?
+				TRACE(_T("计算电流稳定度"));
+				pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("计算电流稳定度"));
+				pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("计算电流稳定度"));
+				if (dbPidStability < pdlgMain->m_dbPidStability)
+				{
+					//pdlgMain->m_dbOutputCurrent=??
+					TRACE(_T("计算输出电流并输出"));
+					pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("计算输出电流并输出"));
+					pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("计算输出电流并输出"));
+					continue;
+				}
+			}
+		}
+
+		dwTimePeriod = GetTickCount() - dwTimeBegin;
+		if (dwTimePeriod > pdlgMain->m_dbHeaterStableTime)
+		{
+			//dbHeaterStability=?
+			TRACE(_T("计算加热腔稳定度"));
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("计算加热腔稳定度"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("计算加热腔稳定度"));
+			if (dbHeaterStability < pdlgMain->m_dbHeaterStability)
+			{
+				TRACE(_T("等待加热腔稳定"));
+				pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("等待加热腔稳定"));
+				pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("等待加热腔稳定"));
+				continue;
+			}
+			else break;
+		}
+	}
+	return gMeasureData[0];
+}
+
+void MeasureThread(LPVOID lpParameter)
+{
+	CPowerMeterDlg *pdlgMain = (CPowerMeterDlg *)lpParameter;
+	CString  csString;
+	LPARAM  lParam = LPARAM(THREAD_STATE_SUCCESS);
+	double dbPidStability=1,dbHeaterStability=1;
+	DWORD dwStart=GetTickCount()/100;
+	double dbLigheTemperature, dbHeaterTemperatureH, dbHeaterTemperatureL, dbHeaterVoltageH, dbHeaterVoltageL;
+	srand(dwStart);
+	while(pdlgMain->m_bInMesuring)
+	{
+		TRACE("预热测温腔\n");
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("预热测温腔"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("预热测温腔"));
+		Sleep(500);	
+		if (pdlgMain->m_dbHeaterResHeat <= 0)
+		{
+			lParam = LPARAM(THREAD_STATE_PARAMS);
+			break;
+		}
+		pdlgMain->m_dbOutputCurrent = sqrt(pdlgMain->m_dbLightPowerEstimate / pdlgMain->m_dbHeaterResHeat);
+		csString.Format(_T("电流输出 %f"), pdlgMain->m_dbOutputCurrent);
+		TRACE(csString);
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(csString);
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(csString);
+		WaitforStable(pdlgMain, dwStart,TRUE);
+
+
+		TRACE("撤去电功开启快门测量光功\n");
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("开启快门测量光功"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("开启快门测量光功"));
+		gMeasureData[1] =WaitforStable(pdlgMain, dwStart, FALSE );
+		gMeasureData[1].bState = 1;
+		dbLigheTemperature = gMeasureData[1].dbTemperature;
+		pdlgMain->PostMessage(WM_THREAD, THREAD_MEASURE_DATA, LPARAM(&(gMeasureData[1])));
+		Sleep(500);
+
+		TRACE("关闭快门 预估替代电功\n");//pdlgMain->m_dbOutputCurrent=??
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("关闭快门 预估替代电功"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("关闭快门 预估替代电功"));
+		gMeasureData[0]=WaitforStable(pdlgMain, dwStart, TRUE);
+		Sleep(500);
+
+		if (dbLigheTemperature > gMeasureData[0].dbTemperature)
+		{
+			gMeasureData[2] = gMeasureData[0];
+			while (pdlgMain->m_bInMesuring)
+			{
+				gMeasureData[2].bState = 2;
+				dbHeaterVoltageL = gMeasureData[2].dbVoltage;
+				dbHeaterTemperatureL = gMeasureData[2].dbTemperature;
+				pdlgMain->m_dbOutputCurrent += sqrt(pdlgMain->m_dbHeaterPowerStep / pdlgMain->m_dbHeaterResHeat);
+				TRACE("增加电流测量电热\n");//m_dbHeaterPowerStep   pdlgMain->m_dbOutputCurrent=??
+				pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("增加电流测量电热"));
+				pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("增加电流测量电热"));
+				gMeasureData[0] =WaitforStable(pdlgMain, dwStart, TRUE);
+				if (dbLigheTemperature < gMeasureData[0].dbTemperature)
+				{
+					gMeasureData[3] = gMeasureData[0];
+					gMeasureData[3].bState = 3;
+					dbHeaterVoltageH = gMeasureData[3].dbVoltage;
+					dbHeaterTemperatureH = gMeasureData[3].dbTemperature;
+					break;
+				}
+				else gMeasureData[2] = gMeasureData[0];
+
+			}
+		}
+		else
+		{
+			gMeasureData[3] = gMeasureData[0];
+
+			while (pdlgMain->m_bInMesuring)
+			{
+				gMeasureData[3].bState = 3;				
+				dbHeaterVoltageH = gMeasureData[3].dbVoltage;
+				dbHeaterTemperatureH = gMeasureData[3].dbTemperature;
+				pdlgMain->m_dbOutputCurrent -= sqrt(pdlgMain->m_dbHeaterPowerStep / pdlgMain->m_dbHeaterResHeat);
+				TRACE("减少电流测量电热\n");//m_dbHeaterPowerStep   pdlgMain->m_dbOutputCurrent=??
+				pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("减少电流测量电热"));
+				pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("减少电流测量电热"));
+				gMeasureData[0] = WaitforStable(pdlgMain, dwStart, TRUE);
+				if (dbLigheTemperature < gMeasureData[0].dbTemperature)
+				{
+					gMeasureData[2] = gMeasureData[0];
+					gMeasureData[2].bState = 2;
+					dbHeaterVoltageL = gMeasureData[2].dbVoltage;
+					dbHeaterTemperatureL = gMeasureData[2].dbTemperature;
+					break;
+				}
+				else gMeasureData[3] = gMeasureData[0];
+			}
+		}
+
+		pdlgMain->PostMessage(WM_THREAD, THREAD_MEASURE_DATA, LPARAM(&(gMeasureData[2])));
+		pdlgMain->PostMessage(WM_THREAD, THREAD_MEASURE_DATA, LPARAM(&(gMeasureData[3])));
+		break;
+	}
+	pdlgMain->PostMessage(WM_THREAD, THREAD_MEASURE_STATUS, lParam);
+}
+
+//数据接收函数
+LONG lErrorCode = 0;
+void ReceiveDataThread(LPVOID lpParameter)
+{
+	Cport *commPort = (Cport*)lpParameter;
+	if (!commPort)
+	{
+		lErrorCode = ERROR_INVALID_PARAMETER;
+		return;
+	}
+	char* pcDataRev = new char[commPort->Message];//8个bit
+	while (commPort->m_bRunning)
+	{
+		DWORD dwRet;
+		memset(pcDataRev, 0, commPort->Message);
+		LONG XY = commPort->RecData(pcDataRev, commPort->Message, &dwRet);//数据首地址,要读取的数据最大字节数,用来接收返回成功读取的数据字节数
+		if (XY) {
+			//GetSpectrumData(pcDataRev, sData);
+		}
+		if (commPort->callbackFunc)
+
+			if (XY && commPort->callbackFunc)
+			{
+				commPort->callbackFunc(pcDataRev, dwRet);
+			}
+	}
+	delete[] pcDataRev;
+}
+
+PVOID psConnectDevice(DWORD  dwComm, DWORD  dwFrameSize, CallbackFunction callbackFunc)
+{
+	if (dwComm>64)
+	{
+		lErrorCode = ERROR_INVALID_PARAMETER;
+		return NULL;
+	}
+	CString pcCommName;
+	Cport *commPort = new  Cport;
+	if (!commPort)
+	{
+		lErrorCode = ERROR_NOT_ENOUGH_MEMORY;
+		return NULL;
+	}
+	if (dwComm > 9)
+	{
+		pcCommName.Format(_T("\\\\.\\COM%d"), dwComm);
+	}
+	else
+	{
+		pcCommName.Format(L"COM%d", dwComm);
+	}
+	BOOL 	bResult = FALSE;
+	HANDLE  hThread = NULL;
+	commPort->Message = dwFrameSize;
+	commPort->callbackFunc = callbackFunc;
+	bResult = commPort->OpenPort((LPCWSTR)pcCommName, false);  //打开串口
+	if (bResult)
+	{
+		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReceiveDataThread, commPort, 0, NULL);
+	}
+	if (hThread != NULL)
+	{
+		CloseHandle(hThread);
+		lErrorCode = ERROR_SUCCESS;
+		return  commPort;
+	}
+	else
+	{
+		commPort->ClosePort();
+		delete commPort;
+		lErrorCode = ERROR_UNKNOWN_FEATURE;
+		return NULL;
+	}
+}
+
+
+LONG  psWriteData(PVOID pHandle, PCHAR  pcData, DWORD  dwDataSize)
+{
+	if (!(pHandle && pcData && dwDataSize))
+	{
+		lErrorCode = ERROR_INVALID_PARAMETER;
+		return 0;
+	}
+	Cport *commPort = (Cport*)pHandle;
+
+	return commPort->SendData(pcData, dwDataSize);
+}
+
+BOOL  psSetPort(PVOID pHandle, int BaudRate, int bytesize, int parity, int stopbits)
+{
+	if (!pHandle ||
+		BaudRate<CBR_110 || BaudRate>CBR_256000 * 4 ||
+		bytesize<5 || bytesize>8 ||
+		parity<NOPARITY || parity>SPACEPARITY ||
+		stopbits<ONESTOPBIT || stopbits>TWOSTOPBITS)
+	{
+		lErrorCode = ERROR_INVALID_PARAMETER;
+		return FALSE;
+	}
+	Cport *commPort = (Cport*)pHandle;
+
+	return commPort->SetPortParm(BaudRate, bytesize, parity, stopbits);
+}
+
+BOOL  psDisconnectDevice(PVOID pHandle)
+{
+	if (!pHandle)
+	{
+		lErrorCode = ERROR_INVALID_PARAMETER;
+		return FALSE;
+	}
+	Cport *commPort = (Cport*)pHandle;
+	commPort->ClosePort();
+	delete commPort;
+	return TRUE;
+}
+
+DWORD CreateID()
+{
+	SYSTEMTIME sysTime;
+	GetLocalTime(&sysTime);
+	DWORD dwTime, dwDate;
+
+	dwTime = ((((sysTime.wHour * 60 + sysTime.wMinute) * 60 + sysTime.wSecond) * 10 + (sysTime.wMilliseconds % 10)) & 0x000fffff) |
+		((((sysTime.wYear * 12 + sysTime.wMonth) * 31 + sysTime.wDay) & 0x00000fff) << 20);
+
+	GetLocalTime(&sysTime);
+	dwDate = ((((sysTime.wHour * 60 + sysTime.wMinute) * 60 + sysTime.wSecond) * 10 + (sysTime.wMilliseconds % 10)) & 0x000fffff) |
+		((((sysTime.wYear * 12 + sysTime.wMonth) * 31 + sysTime.wDay) & 0x00000fff) << 20);
+	return dwDate;
+}
