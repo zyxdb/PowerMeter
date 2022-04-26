@@ -75,14 +75,13 @@ public:
 	BOOL m_bCheckHeaterCurrent;//测量电流绘图开关
 	BOOL m_bCheckOutputCurrent;//输出电流绘图开关
 
-	bool m_bMultimeterConnect = false;//万用表开关
+
 	bool m_bValidVerify;
 
 
 public:
 	int   m_iWorkItem;
-	Cport	m_cComPortCurrentSource;//精密电流源
-	Cport	m_cComPortMultimeter;//万用表
+
 	CImage m_cImgLogo;
 	CStatic m_cStaticLogo;
 	afx_msg void OnStnClickedStaticCurrentsourceConnect();
@@ -122,6 +121,4 @@ public:
 	double m_dbTemperature;
 	double m_dbVoltage;
 	double m_dbOutputCurrent;
-
-	afx_msg void OnStnClickedStaticShutter();
 };

@@ -16,7 +16,7 @@
 #include "EstimateLightPowerDlg.h"
 #include "GPIB\ni4882.h"
 
-static void GPIBCleanup(int Dev, const char * ErrorMsg);
+//static void GPIBCleanup(int Dev, const char * ErrorMsg);
 
 // CPowerMeterDlg 对话框
 
@@ -101,8 +101,6 @@ BEGIN_MESSAGE_MAP(CPowerMeterDlg, CDialogEx)
 	ON_STN_CLICKED(IDC_STATIC_MULTIMETER_CONNECT, &CPowerMeterDlg::OnStnClickedStaticMultimeterConnect)
 	ON_STN_CLICKED(IDC_STATIC_GPIB488_CONNECT, &CPowerMeterDlg::OnStnClickedStaticGpib488Connect)
 	ON_STN_CLICKED(IDC_STATIC_GPIB488_CONNECT2, &CPowerMeterDlg::OnStnClickedStaticGpib488Connect2)
-
-	ON_STN_CLICKED(IDC_STATIC_SHUTTER, &CPowerMeterDlg::OnStnClickedStaticShutter)
 END_MESSAGE_MAP()
 
 
@@ -631,38 +629,16 @@ void CPowerMeterDlg::OnStnClickedStaticMultimeterConnect()//连接万用表
 	else
 	{
 		DWORD dwRev = 0;
-		/*MakeLaserControllCommand((PBYTE)pcCommand, 0xA0, 0x000000);
-		m_bValidVerify = m_cComPortLaserController.SendData(pcCommand, 8);
-		MakeLaserControllCommand((PBYTE)pcCommand, 0xA1, 0x000000);*/
 		//pcCommand[1] = 'O';
 		m_bValidVerify = m_cComPortMultimeter.SendData(pcCommand, 18);
-		//m_bValidVerify = m_cComPortCurrentSource.SendData(pcCommand, 4);
-		//m_bValidVerify = m_cComPortCurrentSource.SendData(pcCommand, 4);
 		if (m_bValidVerify)
 		{
-			//m_cComPortLaserController.RecData(pcCommand, 32, &dwRev);
 			GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"万用表连接设置成功!");
 			GetDlgItem(IDC_STATIC_MULTIMETER_CONNECT)->SetWindowTextW(L"断开万用表");
 			m_bMultimeterConnect = true;
 			GetDlgItem(IDC_STATIC_MULTIMETER_CONNECT)->RedrawWindow();
 			return;
 		}
-		//MakeLaserControllCommand((PBYTE)pcCommand, 0x7E, 0x000000);
-
-		//m_bValidVerify = m_cComPortLaserController.SendData(pcCommand, 8);
-		//if (m_bValidVerify)
-		//{
-		//	//MakeLaserControllCommand((PBYTE)pcCommand, 0xE0, 0x000000); 
-		//	//m_bValidVerify = m_cComPortLaserController.SendData(pcCommand, 8);
-		//	m_cComPortLaserController.RecData(pcCommand, 32, &dwRev);
-		//	GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"激光控制器恒温模式设置成功!");
-		//	m_cEditWavelengthFixed.EnableWindow(1);
-		//	m_cEditLaserPower.EnableWindow(1);
-		//	GetDlgItem(IDC_STATIC_START)->SetWindowTextW(L"断开激光器");
-		//	m_bLaserControllerConnected = true;
-		//	GetDlgItem(IDC_STATIC_START)->RedrawWindow();
-		//	return;
-		//}
 	}
 	m_cComPortMultimeter.ClosePort();
 	GetDlgItem(IDC_STATIC_START)->RedrawWindow();
@@ -738,23 +714,23 @@ void CPowerMeterDlg::OnStnClickedStaticGpib488Connect()
 	//printf("Data read: %s\n", ValueStr);
 }
 
-void GPIBCleanup(int Dev, const char * ErrorMsg)
-{
-	static char ErrorMnemonic[29][5] = {
-		"EDVR", "ECIC", "ENOL", "EADR", "EARG",
-		"ESAC", "EABO", "ENEB", "EDMA", "",
-		"EOIP", "ECAP", "EFSO", "",     "EBUS",
-		"ESTB", "ESRQ", "",     "",      "",
-		"ETAB", "ELCK", "EARM", "EHDL",  "",
-		"",     "EWIP", "ERST", "EPWR" };
-	printf("Error : %s\nibsta = 0x%x iberr = %d (%s)\n",
-		ErrorMsg, Ibsta(), Iberr(), ErrorMnemonic[Iberr()]);
-	if (Dev != -1)
-	{
-		printf("Cleanup: Taking device off-line\n");
-		ibonl(Dev, 0);
-	}
-}
+//void GPIBCleanup(int Dev, const char * ErrorMsg)
+//{
+//	static char ErrorMnemonic[29][5] = {
+//		"EDVR", "ECIC", "ENOL", "EADR", "EARG",
+//		"ESAC", "EABO", "ENEB", "EDMA", "",
+//		"EOIP", "ECAP", "EFSO", "",     "EBUS",
+//		"ESTB", "ESRQ", "",     "",      "",
+//		"ETAB", "ELCK", "EARM", "EHDL",  "",
+//		"",     "EWIP", "ERST", "EPWR" };
+//	printf("Error : %s\nibsta = 0x%x iberr = %d (%s)\n",
+//		ErrorMsg, Ibsta(), Iberr(), ErrorMnemonic[Iberr()]);
+//	if (Dev != -1)
+//	{
+//		printf("Cleanup: Taking device off-line\n");
+//		ibonl(Dev, 0);
+//	}
+//}
 
 void CPowerMeterDlg::OnStnClickedStaticSelfcheck()
 {
@@ -807,14 +783,19 @@ void CPowerMeterDlg::GetConfigFromINI()
 	dwRet = GetPrivateProfileString(_T("Light"), _T("PowerEstimated"), _T("10"), ptValue, sizeof(ptValue), csConfigIniFile);
 	m_dbLightPowerEstimate = _ttof(ptValue);
 
+	// 电流源COM口
 	dwRet = GetPrivateProfileString(_T("ComPort"), _T("CurrentSource"), _T("COM1"), ptValue, sizeof(ptValue), csConfigIniFile);	
 	m_csComPortCurrentSource = ptValue;
+	// 二极管COM口
 	dwRet = GetPrivateProfileString(_T("ComPort"), _T("PDA"), _T("COM1"), ptValue, sizeof(ptValue), csConfigIniFile);
 	m_csComPortPDA = ptValue;
+	// 万用表COM口
 	dwRet = GetPrivateProfileString(_T("ComPort"), _T("Multimeter"), _T("COM1"), ptValue, sizeof(ptValue), csConfigIniFile);
 	m_csComMultimeter = ptValue;
+	// 快门COM口
 	dwRet = GetPrivateProfileString(_T("ComPort"), _T("Shutter"), _T("COM1"), ptValue, sizeof(ptValue), csConfigIniFile);
 	m_csComPortShutter = ptValue;
+	// 额外连接COM口
 	dwRet = GetPrivateProfileString(_T("ComPort"), _T("ExtCtrl"), _T("COM1"), ptValue, sizeof(ptValue), csConfigIniFile);
 	m_csComPortExtCtrl = ptValue;
 

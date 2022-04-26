@@ -4,23 +4,58 @@
 #include "commons.h"
 #include "PowerMeterLib.h"
 #include "PowerMeterDlg.h"
+#include "GPIB\ni4882.h"
 
 void SelfCheckThread(LPVOID lpParameter)
 {
 	CPowerMeterDlg *pdlgMain = (CPowerMeterDlg *)lpParameter;
 	
 	do {
-		if (pdlgMain->m_iSelfChecking != 1) break;;
-		TRACE("电桥通信正常\n");
-		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("电桥通信正常"));
-		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("电桥通信正常"));
+		// 自检返回结果判断
+		int ReturnState = THREAD_STATE_SUCCESS;
+
+		if (pdlgMain->m_iSelfChecking != 1) break;
+		if (bEleBridgeCheck()) {
+			TRACE("电桥通信正常\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("电桥通信正常"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("电桥通信正常"));
+		}
+		else {
+			TRACE("电桥通信失败\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("电桥通信失败"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("电桥通信失败"));
+			ReturnState = THREAD_STATE_ERROR;
+		}
 		Sleep(2000);
-		if (pdlgMain->m_iSelfChecking != 1) break;;
-		TRACE("万用表通信正常\n");
-		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("万用表通信正常"));
-		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("万用表通信正常"));
+
+		if (pdlgMain->m_iSelfChecking != 1) break;
+		if (bMultiMeterCheck(pdlgMain)) {
+			TRACE("万用表通信正常\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("万用表通信正常"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("万用表通信正常"));
+		}
+		else {
+			TRACE("万用表通信失败\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("万用表通信失败"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("万用表通信失败"));
+			ReturnState = THREAD_STATE_ERROR;
+		}
 		Sleep(2000);
-		if (pdlgMain->m_iSelfChecking != 1) break;;
+
+		if (pdlgMain->m_iSelfChecking != 1) break;
+		if (bCurrentSourceCheck(pdlgMain)) {
+			TRACE("电流源通信正常\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("电流源通信正常"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("电流源通信正常"));
+		}
+		else {
+			TRACE("电流源通信失败\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("电流源通信失败"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("电流源通信失败"));
+			ReturnState = THREAD_STATE_ERROR;
+		}
+		Sleep(2000);
+
 		TRACE("快门通信正常\n");
 		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("快门通信正常"));
 		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("快门通信正常"));
@@ -35,7 +70,7 @@ void SelfCheckThread(LPVOID lpParameter)
 		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("PSD通信正常"));
 		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("PSD通信正常"));
 		Sleep(2000);
-		pdlgMain->PostMessage(WM_THREAD, THREAD_SELFCHECK_STATUS, THREAD_STATE_SUCCESS);
+		pdlgMain->PostMessage(WM_THREAD, THREAD_SELFCHECK_STATUS, ReturnState);
 	} while (0);
 	if (pdlgMain->m_iSelfChecking != 1) pdlgMain->PostMessage(WM_THREAD, THREAD_SELFCHECK_STATUS, THREAD_STATE_TERMINATED);
 }
@@ -222,10 +257,10 @@ void ReceiveDataThread(LPVOID lpParameter)
 		DWORD dwRet;
 		memset(pcDataRev, 0, commPort->Message);
 		LONG XY = commPort->RecData(pcDataRev, commPort->Message, &dwRet);//数据首地址,要读取的数据最大字节数,用来接收返回成功读取的数据字节数
-		if (XY) {
-			//GetSpectrumData(pcDataRev, sData);
-		}
-		if (commPort->callbackFunc)
+		//if (XY) {
+		//	//GetSpectrumData(pcDataRev, sData);
+		//}
+		//if (commPort->callbackFunc)
 
 			if (XY && commPort->callbackFunc)
 			{
@@ -336,4 +371,121 @@ DWORD CreateID()
 	dwDate = ((((sysTime.wHour * 60 + sysTime.wMinute) * 60 + sysTime.wSecond) * 10 + (sysTime.wMilliseconds % 10)) & 0x000fffff) |
 		((((sysTime.wYear * 12 + sysTime.wMonth) * 31 + sysTime.wDay) & 0x00000fff) << 20);
 	return dwDate;
+}
+
+// 电桥自检判断
+BOOL bEleBridgeCheck() {
+	// TODO: 在此添加控件通知处理程序代码
+	#define GPIB0                 0        // Board handle
+	#define ARRAYSIZE             512      // Size of read buffer
+	#define BDINDEX               0        // Board Index
+	#define PRIMARY_ADDR_OF_PPS   5        // Primary address of device
+	#define NO_SECONDARY_ADDR     0        // Secondary address of device
+	#define TIMEOUT               T10s     // Timeout value = 10 seconds
+	#define EOTMODE               1        // Enable the END message
+	#define EOSMODE               0x140D   // Disable the EOS mode
+
+	// 未建立通信时先建立通信
+	if (!m_bQJ58Connect) {
+		m_iDev = ibdev(BDINDEX, PRIMARY_ADDR_OF_PPS, NO_SECONDARY_ADDR,
+			TIMEOUT, EOTMODE, EOSMODE);
+		m_bQJ58Connect = true;
+	}
+	static char ValueStr[ARRAYSIZE + 1];
+	ibwrt(m_iDev, "*IDN?\r\n", 7L);
+	ibrd(m_iDev, ValueStr, ARRAYSIZE);
+	// 接收返回值应为“QJ58A RAYSTING INSTRUMENT”,但是好像首位会返回一个空格，所以用第二位和第三位做判断
+	if (ValueStr[1] == 'Q' && ValueStr[2] == 'J') {
+		return true;
+	}
+	return false;
+	//ibwrt(m_iDev, "D3Measurements:\r", 17L);
+}
+
+BOOL bMultiMeterCheck(CPowerMeterDlg *pdlgMain) {
+	CString str, pcCommName;
+	bool m_bValidVerify;
+	char pcCommand[20] = { '$','$', 'R', 'E','A','D','V','L','T','R','A','N','G','E','#','#' };
+
+	str = pdlgMain->m_csComMultimeter;
+	int num = _ttoi(str);//字符串转int
+	if (num >= 9)
+	{
+		pcCommName.Format(_T("\\\\.\\COM%d"), num + 1);
+	}
+	else
+	{
+		pcCommName.Format(L"COM%d", num + 1);
+	}
+	m_bValidVerify = m_cComPortMultimeter.OpenPort((LPCWSTR)pcCommName, false);  //打开串口
+	if (!m_bValidVerify)
+	{
+		return false;
+	}
+	m_bValidVerify = m_cComPortMultimeter.SetPortParm(115200);//串口波特率设置为115200
+	if (!m_bValidVerify)
+	{
+		m_cComPortMultimeter.ClosePort();
+		return false;
+	}
+	else
+	{
+		DWORD dwRev = 0;
+		m_bValidVerify = m_cComPortMultimeter.SendData(pcCommand, 18);
+		if (m_bValidVerify)
+		{
+			LONG XY = m_cComPortMultimeter.RecData(pcCommand, 32, &dwRev);
+			if (XY) {
+				m_bMultimeterConnect = true;
+				return true;
+			}
+		}
+	}
+	m_cComPortMultimeter.ClosePort();
+	return false;
+}
+
+BOOL bCurrentSourceCheck(CPowerMeterDlg *pdlgMain) {
+	// TODO: 在此添加控件通知处理程序代码
+	CString str, pcCommName;
+	bool m_bValidVerify;
+	char pcCommand[20] = { 'A','T', 'V' , ',','S','E','T',',','A','O','N',',','0','0','0','0','0','0','0',';' };
+
+	str = pdlgMain->m_csComPortCurrentSource;
+	int num = _ttoi(str);//字符串转int
+						 //int num = m_iCurrentsource;
+	if (num >= 9)
+	{
+		pcCommName.Format(_T("\\\\.\\COM%d"), num + 1);
+	}
+	else
+	{
+		pcCommName.Format(L"COM%d", num + 1);
+	}
+	m_bValidVerify = m_cComPortCurrentSource.OpenPort((LPCWSTR)pcCommName, false);  //打开串口
+	if (!m_bValidVerify)
+	{
+		return false;
+	}
+	m_bValidVerify = m_cComPortCurrentSource.SetPortParm(9600);//串口波特率设置为9600
+	if (!m_bValidVerify)
+	{
+		m_cComPortCurrentSource.ClosePort();
+		return false;
+	}
+	else
+	{
+		DWORD dwRev = 0;
+		m_bValidVerify = m_cComPortCurrentSource.SendData(pcCommand, 20);
+		if (m_bValidVerify)
+		{
+			LONG XY = m_cComPortMultimeter.RecData(pcCommand, 32, &dwRev);
+			if (XY) {
+				m_bCurrentSourceConnect = true;
+				return true;
+			}
+		}
+	}
+	m_cComPortCurrentSource.ClosePort();
+	return false;
 }
