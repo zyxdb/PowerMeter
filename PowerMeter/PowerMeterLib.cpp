@@ -1,3 +1,4 @@
+#pragma once
 #include "stdafx.h"
 #include "windows.h"
 #include "PowerMeter.h"
@@ -5,6 +6,20 @@
 #include "PowerMeterLib.h"
 #include "PowerMeterDlg.h"
 #include "GPIB\ni4882.h"
+
+bool m_bQJ58Connect = false;//电桥开关
+bool m_bMultimeterConnect = false;//万用表开关
+bool m_bCurrentSourceConnect = false;//万用表开关
+bool m_bShutterConnect = false;//快门开关
+bool m_bExtCtrlConnect = false;//额外控制开关
+bool m_bPDAConnect = false;//二极管开关
+
+int  m_iDev;//电桥
+Cport	m_cComPortCurrentSource;//精密电流源
+Cport	m_cComPortMultimeter;//万用表
+Cport	m_cComPortShutter;//快门
+Cport	m_cComPortExtCtrl;//额外控制
+Cport	m_cComPortPDA;//二极管
 
 void SelfCheckThread(LPVOID lpParameter)
 {
@@ -56,20 +71,50 @@ void SelfCheckThread(LPVOID lpParameter)
 		}
 		Sleep(2000);
 
-		TRACE("快门通信正常\n");
-		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("快门通信正常"));
-		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("快门通信正常"));
+		// 快门快速开关一次就当自检了。
+		if (pdlgMain->m_iSelfChecking != 1) break;
+		if (bShutterCheck(pdlgMain)) {
+			TRACE("快门通信正常\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("快门通信正常"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("快门通信正常"));
+		}
+		else {
+			TRACE("快门通信失败\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("快门通信失败"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("快门通信失败"));
+			ReturnState = THREAD_STATE_ERROR;
+		}
 		Sleep(2000);
-		if (pdlgMain->m_iSelfChecking != 1) break;;
-		TRACE("外部协作端口正常\n");
-		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("外部协作端口正常"));
-		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("外部协作端口正常"));
+
+		// 外部协作串口通信还没协议。函数内部内容待补充
+		if (pdlgMain->m_iSelfChecking != 1) break;
+		if (bExtCtrlCheck(pdlgMain)) {
+			TRACE("外部协作端口正常\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("外部协作端口正常"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("外部协作端口正常"));
+		}
+		else {
+			TRACE("外部协作端口异常\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("外部协作端口异常"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("外部协作端口异常"));
+			ReturnState = THREAD_STATE_ERROR;
+		}
 		Sleep(2000);
-		if (pdlgMain->m_iSelfChecking != 1) break;;
-		TRACE("PSD通信正常\n");
-		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("PSD通信正常"));
-		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("PSD通信正常"));
+
+		if (pdlgMain->m_iSelfChecking != 1) break;
+		if (bPDACheck(pdlgMain)) {
+			TRACE("PSD通信正常\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("PSD通信正常"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("PSD通信正常"));
+		}
+		else {
+			TRACE("PSD通信异常\n");
+			pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("PSD通信异常"));
+			pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("PSD通信异常"));
+			ReturnState = THREAD_STATE_ERROR;
+		}
 		Sleep(2000);
+
 		pdlgMain->PostMessage(WM_THREAD, THREAD_SELFCHECK_STATUS, ReturnState);
 	} while (0);
 	if (pdlgMain->m_iSelfChecking != 1) pdlgMain->PostMessage(WM_THREAD, THREAD_SELFCHECK_STATUS, THREAD_STATE_TERMINATED);
@@ -487,5 +532,125 @@ BOOL bCurrentSourceCheck(CPowerMeterDlg *pdlgMain) {
 		}
 	}
 	m_cComPortCurrentSource.ClosePort();
+	return false;
+}
+
+BOOL bShutterCheck(CPowerMeterDlg *pdlgMain) {
+	// 快门自检程序
+	CString str, pcCommName;
+	bool m_bValidVerify;
+	//char pcCommand[20] = { 'A','T', 'V' , ',','S','E','T',',','A','O','N',',','0','0','0','0','0','0','0',';' };
+	char sendOpen[1] = { 0xea };// 全开指令
+	char sendClose[1] = { 0x0a };// 全关指令
+
+	str = pdlgMain->m_csComPortShutter;
+	int num = _ttoi(str);//字符串转int
+	if (num >= 9)
+	{
+		pcCommName.Format(_T("\\\\.\\COM%d"), num + 1);
+	}
+	else
+	{
+		pcCommName.Format(L"COM%d", num + 1);
+	}
+	m_bValidVerify = m_cComPortShutter.OpenPort((LPCWSTR)pcCommName, false);  //打开串口
+	if (!m_bValidVerify)
+	{
+		return false;
+	}
+	m_bValidVerify = m_cComPortShutter.SetPortParm(19200);//串口波特率设置为19200
+	if (!m_bValidVerify)
+	{
+		m_cComPortShutter.ClosePort();
+		return false;
+	}
+	else
+	{
+		DWORD dwRev = 0;
+		m_bValidVerify = m_cComPortShutter.SendData(sendOpen, 1);
+		bool tmp = m_cComPortShutter.SendData(sendClose, 1);
+		if (m_bValidVerify && tmp)
+		{
+			m_bShutterConnect = true;
+			return true;
+		}
+	}
+	m_cComPortShutter.ClosePort();
+	return false;
+}
+
+BOOL bExtCtrlCheck(CPowerMeterDlg *pdlgMain) {
+	CString str, pcCommName;
+	bool m_bValidVerify;
+	//char pcCommand[20] = { 'A','T', 'V' , ',','S','E','T',',','A','O','N',',','0','0','0','0','0','0','0',';' };
+	//char sendOpen[1] = { 0xea };// 全开指令
+	//char sendClose[1] = { 0x0a };// 全关指令
+
+	str = pdlgMain->m_csComPortExtCtrl;
+	int num = _ttoi(str);//字符串转int
+	if (num >= 9)
+	{
+		pcCommName.Format(_T("\\\\.\\COM%d"), num + 1);
+	}
+	else
+	{
+		pcCommName.Format(L"COM%d", num + 1);
+	}
+	m_bValidVerify = m_cComPortExtCtrl.OpenPort((LPCWSTR)pcCommName, false);  //打开串口
+	if (!m_bValidVerify)
+	{
+		return false;
+	}
+	m_bValidVerify = m_cComPortExtCtrl.SetPortParm(115200);//串口波特率设置为115200
+	if (!m_bValidVerify)
+	{
+		m_cComPortExtCtrl.ClosePort();
+		return false;
+	}
+	else
+	{
+		// 还未确定通信协议 先直接返回TRUE
+		m_bExtCtrlConnect = true;
+		return true;
+	}
+	m_cComPortExtCtrl.ClosePort();
+	return false;
+}
+
+BOOL bPDACheck(CPowerMeterDlg *pdlgMain) {
+	CString str, pcCommName;
+	bool m_bValidVerify;
+	//char pcCommand[20] = { 'A','T', 'V' , ',','S','E','T',',','A','O','N',',','0','0','0','0','0','0','0',';' };
+	//char sendOpen[1] = { 0xea };// 全开指令
+	//char sendClose[1] = { 0x0a };// 全关指令
+
+	str = pdlgMain->m_csComPortPDA;
+	int num = _ttoi(str);//字符串转int
+	if (num >= 9)
+	{
+		pcCommName.Format(_T("\\\\.\\COM%d"), num + 1);
+	}
+	else
+	{
+		pcCommName.Format(L"COM%d", num + 1);
+	}
+	m_bValidVerify = m_cComPortPDA.OpenPort((LPCWSTR)pcCommName, false);  //打开串口
+	if (!m_bValidVerify)
+	{
+		return false;
+	}
+	m_bValidVerify = m_cComPortPDA.SetPortParm(115200);//串口波特率设置为115200
+	if (!m_bValidVerify)
+	{
+		m_cComPortPDA.ClosePort();
+		return false;
+	}
+	else
+	{
+		// 还未确定通信协议 先直接返回TRUE
+		m_bPDAConnect = true;
+		return true;
+	}
+	m_cComPortPDA.ClosePort();
 	return false;
 }

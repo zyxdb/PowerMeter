@@ -1,4 +1,6 @@
 #pragma once
+#include "PowerMeterDlg.h"
+
 typedef void(*CallbackFunction)(PCHAR  pcData, DWORD  dwDataSize);
 PVOID psConnectDevice(DWORD  dwComm, DWORD  dwFrameSize, CallbackFunction callbackFunc = NULL);
 BOOL  psDisconnectDevice(PVOID pHandle);
@@ -10,11 +12,4 @@ DWORD CreateID();
 BOOL bEleBridgeCheck();
 BOOL bMultiMeterCheck(CPowerMeterDlg *pdlgMain);
 BOOL bCurrentSourceCheck(CPowerMeterDlg *pdlgMain);
-
-bool m_bQJ58Connect = false;//电桥开关
-bool m_bMultimeterConnect = false;//万用表开关
-bool m_bCurrentSourceConnect = false;//万用表开关
-
-int  m_iDev;//电桥
-Cport	m_cComPortCurrentSource;//精密电流源
-Cport	m_cComPortMultimeter;//万用表
+BOOL bShutterCheck(CPowerMeterDlg *pdlgMain);

@@ -60,7 +60,7 @@ public:
 
 	bool m_bInMesuring;//²âÁ¿¿ª¹Ø
 
-	int  m_iDev;
+	//int  m_iDev;
 	bool m_bDevValid = false;
 
 	CChartCtrl m_ChartCtrl;
