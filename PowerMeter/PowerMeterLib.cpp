@@ -3,23 +3,10 @@
 #include "windows.h"
 #include "PowerMeter.h"
 #include "commons.h"
+#include <string>
 #include "PowerMeterLib.h"
 #include "PowerMeterDlg.h"
 #include "GPIB\ni4882.h"
-
-bool m_bQJ58Connect = false;//电桥开关
-bool m_bMultimeterConnect = false;//万用表开关
-bool m_bCurrentSourceConnect = false;//万用表开关
-bool m_bShutterConnect = false;//快门开关
-bool m_bExtCtrlConnect = false;//额外控制开关
-bool m_bPDAConnect = false;//二极管开关
-
-int  m_iDev;//电桥
-Cport	m_cComPortCurrentSource;//精密电流源
-Cport	m_cComPortMultimeter;//万用表
-Cport	m_cComPortShutter;//快门
-Cport	m_cComPortExtCtrl;//额外控制
-Cport	m_cComPortPDA;//二极管
 
 void SelfCheckThread(LPVOID lpParameter)
 {
@@ -139,8 +126,11 @@ MeasureData WaitforStable(CPowerMeterDlg *pdlgMain,DWORD dwStart,BOOL bElectricE
 			(1 << LineSerie_Voltage) |
 			(1 << LineSerie_OutputCurrent);
 		gMeasureData[0].dwIdex = GetTickCount() / 100 - dwStart;
-		gMeasureData[0].dbTemperature = rand();
-		gMeasureData[0].dbVoltage = rand();
+		// 计算温度
+		gMeasureData[0].dbTemperature = temperatureMeasure(pdlgMain);
+		// 计算电压
+		gMeasureData[0].dbVoltage = VoltageMeasure(pdlgMain);
+		// 计算电流源
 		gMeasureData[0].dbOutputCurrent = pdlgMain->m_dbOutputCurrent;
 		gMeasureData[0].bState = 0;
 		pdlgMain->PostMessage(WM_THREAD, THREAD_MEASURE_DATA, LPARAM(&(gMeasureData[0])));
@@ -315,52 +305,51 @@ void ReceiveDataThread(LPVOID lpParameter)
 	delete[] pcDataRev;
 }
 
-PVOID psConnectDevice(DWORD  dwComm, DWORD  dwFrameSize, CallbackFunction callbackFunc)
-{
-	if (dwComm>64)
-	{
-		lErrorCode = ERROR_INVALID_PARAMETER;
-		return NULL;
-	}
-	CString pcCommName;
-	Cport *commPort = new  Cport;
-	if (!commPort)
-	{
-		lErrorCode = ERROR_NOT_ENOUGH_MEMORY;
-		return NULL;
-	}
-	if (dwComm > 9)
-	{
-		pcCommName.Format(_T("\\\\.\\COM%d"), dwComm);
-	}
-	else
-	{
-		pcCommName.Format(L"COM%d", dwComm);
-	}
-	BOOL 	bResult = FALSE;
-	HANDLE  hThread = NULL;
-	commPort->Message = dwFrameSize;
-	commPort->callbackFunc = callbackFunc;
-	bResult = commPort->OpenPort((LPCWSTR)pcCommName, false);  //打开串口
-	if (bResult)
-	{
-		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReceiveDataThread, commPort, 0, NULL);
-	}
-	if (hThread != NULL)
-	{
-		CloseHandle(hThread);
-		lErrorCode = ERROR_SUCCESS;
-		return  commPort;
-	}
-	else
-	{
-		commPort->ClosePort();
-		delete commPort;
-		lErrorCode = ERROR_UNKNOWN_FEATURE;
-		return NULL;
-	}
-}
-
+//PVOID psConnectDevice(DWORD  dwComm, DWORD  dwFrameSize, CallbackFunction callbackFunc)
+//{
+//	if (dwComm>64)
+//	{
+//		lErrorCode = ERROR_INVALID_PARAMETER;
+//		return NULL;
+//	}
+//	CString pcCommName;
+//	Cport *commPort = new  Cport;
+//	if (!commPort)
+//	{
+//		lErrorCode = ERROR_NOT_ENOUGH_MEMORY;
+//		return NULL;
+//	}
+//	if (dwComm > 9)
+//	{
+//		pcCommName.Format(_T("\\\\.\\COM%d"), dwComm);
+//	}
+//	else
+//	{
+//		pcCommName.Format(L"COM%d", dwComm);
+//	}
+//	BOOL 	bResult = FALSE;
+//	HANDLE  hThread = NULL;
+//	commPort->Message = dwFrameSize;
+//	commPort->callbackFunc = callbackFunc;
+//	bResult = commPort->OpenPort((LPCWSTR)pcCommName, false);  //打开串口
+//	if (bResult)
+//	{
+//		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReceiveDataThread, commPort, 0, NULL);
+//	}
+//	if (hThread != NULL)
+//	{
+//		CloseHandle(hThread);
+//		lErrorCode = ERROR_SUCCESS;
+//		return  commPort;
+//	}
+//	else
+//	{
+//		commPort->ClosePort();
+//		delete commPort;
+//		lErrorCode = ERROR_UNKNOWN_FEATURE;
+//		return NULL;
+//	}
+//}
 
 LONG  psWriteData(PVOID pHandle, PCHAR  pcData, DWORD  dwDataSize)
 {
@@ -422,10 +411,10 @@ DWORD CreateID()
 BOOL bEleBridgeCheck() {
 	// TODO: 在此添加控件通知处理程序代码
 	#define GPIB0                 0        // Board handle
-	#define ARRAYSIZE             512      // Size of read buffer
-	#define BDINDEX               0        // Board Index
-	#define PRIMARY_ADDR_OF_PPS   5        // Primary address of device
-	#define NO_SECONDARY_ADDR     0        // Secondary address of device
+	#define ARRAYSIZE             512      // Size of read buffer 读写缓存大小
+	#define BDINDEX               0        // Board Index 板卡索引号
+	#define PRIMARY_ADDR_OF_PPS   5        // Primary address of device 定义被控测试仪器主地址
+	#define NO_SECONDARY_ADDR     0        // Secondary address of device 定义被控测试仪器次地址
 	#define TIMEOUT               T10s     // Timeout value = 10 seconds
 	#define EOTMODE               1        // Enable the END message
 	#define EOSMODE               0x140D   // Disable the EOS mode
@@ -653,4 +642,60 @@ BOOL bPDACheck(CPowerMeterDlg *pdlgMain) {
 	}
 	m_cComPortPDA.ClosePort();
 	return false;
+}
+
+double temperatureMeasure(CPowerMeterDlg *pdlgMain) {
+	// 当电桥没连接时
+	if (!m_bQJ58Connect) {
+		TRACE(_T("电桥未连接，请检查电桥连接情况"));
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("电桥未连接，请检查电桥连接情况"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("电桥未连接，请检查电桥连接情况"));
+		return -1;
+	}
+	static char ValueStr[ARRAYSIZE + 1];
+	const char* sendMess = "D3Measurements: ";
+	ibwrt(m_iDev, sendMess, strlen(sendMess));
+	ibrd(m_iDev, ValueStr, ARRAYSIZE);
+	std::string readStr = ValueStr;
+	// 接收值出错的情况
+	if (readStr.find("Measurement") == std::string::npos) {
+		TRACE(_T("获取电桥测量值出错"));
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("获取电桥测量值出错"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("获取电桥测量值出错"));
+		return -1;
+	}
+	double tempRes = 0;
+	// 根据通信协议，R 为电阻值，S 为温度值.找字符串里S的坐标
+	int pos = readStr.find('S');
+	if (pos != std::string::npos) {
+		// 防止字符串越界，定义一下右边界
+		std::string tmp(readStr, pos + 1, min(pos + 9, readStr.size()));
+		tempRes = atof(tmp.c_str());
+	}
+	return tempRes;
+}
+
+double VoltageMeasure(CPowerMeterDlg *pdlgMain) {
+	if (!m_bMultimeterConnect) {
+		TRACE(_T("万用表未连接，请检查电桥连接情况"));
+		pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("万用表未连接，请检查电桥连接情况"));
+		pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("万用表未连接，请检查电桥连接情况"));
+		return -1;
+	}
+	char pcCommand[11] = { '$','$', 'R', 'E','A','D','V','L','T','#','#' };
+	DWORD dwRev = 0;
+	bool m_bValidVerify = m_cComPortMultimeter.SendData(pcCommand, 11);
+	if (m_bValidVerify)
+	{
+		// 接收值形如：$$READVLT: DC:-123.45:V##
+		// 这里可能涉及到一个字符串转double的问题。之后如果有报错再来修改。
+		LONG XY = m_cComPortMultimeter.RecData(pcCommand, 32, &dwRev);
+		if (XY) {
+			return (double)dwRev;
+		}
+	}
+	TRACE(_T("获取万用表测量值出错"));
+	pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("获取万用表测量值出错"));
+	pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("获取万用表测量值出错"));
+	return -1;
 }
