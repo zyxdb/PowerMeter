@@ -8,8 +8,6 @@
 #include "PowerMeterDlg.h"
 #include "PowerMeterLib.h"
 #include "afxdialogex.h"
-#include "Commons.h"
-#include "ChartCtrl\ChartCtrl.h"
 #include "ChartCtrl\ChartTitle.h"
 #include "ChartCtrl\ChartLineSerie.h"
 #include "ChartCtrl\ChartAxisLabel.h"
@@ -98,10 +96,10 @@ BEGIN_MESSAGE_MAP(CPowerMeterDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK_VOLTAGE, &CPowerMeterDlg::OnBnClickedCheck)
 	ON_BN_CLICKED(IDC_CHECK_OUTPUT_CURRENT, &CPowerMeterDlg::OnBnClickedCheck)
 	ON_MESSAGE(WM_THREAD, OnThreadMessage)
-	ON_STN_CLICKED(IDC_STATIC_CURRENTSOURCE_CONNECT, &CPowerMeterDlg::OnStnClickedStaticCurrentsourceConnect)
-	ON_STN_CLICKED(IDC_STATIC_MULTIMETER_CONNECT, &CPowerMeterDlg::OnStnClickedStaticMultimeterConnect)
-	ON_STN_CLICKED(IDC_STATIC_GPIB488_CONNECT, &CPowerMeterDlg::OnStnClickedStaticGpib488Connect)
-	ON_STN_CLICKED(IDC_STATIC_GPIB488_CONNECT2, &CPowerMeterDlg::OnStnClickedStaticGpib488Connect2)
+	//ON_STN_CLICKED(IDC_STATIC_CURRENTSOURCE_CONNECT, &CPowerMeterDlg::OnStnClickedStaticCurrentsourceConnect)
+	//ON_STN_CLICKED(IDC_STATIC_MULTIMETER_CONNECT, &CPowerMeterDlg::OnStnClickedStaticMultimeterConnect)
+	//ON_STN_CLICKED(IDC_STATIC_GPIB488_CONNECT, &CPowerMeterDlg::OnStnClickedStaticGpib488Connect)
+	//ON_STN_CLICKED(IDC_STATIC_GPIB488_CONNECT2, &CPowerMeterDlg::OnStnClickedStaticGpib488Connect2)
 END_MESSAGE_MAP()
 
 
@@ -442,210 +440,6 @@ void CPowerMeterDlg::OnStnClickedStaticStart()//开始测量
 	return;
 }
 
-
-//void CPowerMeterDlg::OnTimer(UINT_PTR nIDEvent)
-//{
-//	// TODO: 在此添加消息处理程序代码和/或调用默认值
-//	if (0 == nIDEvent)
-//	{
-//		//读取电压表新数值
-//		USES_CONVERSION;//字符串转换宏
-//		DWORD a1;
-//		bool SEND;
-//		double Volt=0;
-//		char pcCommand[20] = { '$','$', 'R', 'E','A','D','V','L','T','#','#' };
-//		SEND = m_cComPortMultimeter.SendData(pcCommand, 11);
-//		if (SEND) {
-//			char* rec_f = new char[50];
-//			memset(rec_f, 0, 50);
-//			LONG XY = m_cComPortMultimeter.RecData(rec_f, 50, &a1);
-//			if (XY)
-//			{
-//				CString ff;
-//				ff = A2T(rec_f);
-//				int posC, posV,posHEAD;
-//				posHEAD = ff.Find('$');
-//				posC = ff.Find('C')+2;
-//				posV = ff.Find('#')-2;
-//				CString temp;
-//				temp = ff.Mid(posHEAD);
-//				temp = ff.Mid(posC,posV-posC);
-//				Volt = _ttof(temp);
-//				temp = temp + L"V";
-//				//GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW((LPCTSTR)temp);
-//				GetDlgItem(IDC_STATIC_VOLTAGE_MEASURE)->SetWindowTextW(temp);//测量电压
-//			}
-//		}
-//
-//	}
-//	CDialogEx::OnTimer(nIDEvent);
-//}
-
-
-//void CPowerMeterDlg::OnStnClickedStaticCurrentsourceConnect()//连接精密电流源
-//{
-//	// TODO: 在此添加控件通知处理程序代码
-//	CString str, pcCommName;
-//	char pcCommand[20] = { 'A','T', 'V' , ',','S','E','T',',','A','O','N',',','0','0','0','0','0','0','0',';' };
-//	if (m_iSelfChecking)
-//	{
-//		//MakeLaserControllCommand((PBYTE)pcCommand, 0xA3, 0x000000);//disable current 
-//		//m_cComPortLaserController.SendData(pcCommand,4);
-//		//MakeLaserControllCommand((PBYTE)pcCommand, 0xA6, 0x000000);//set to local
-//		//m_cComPortLaserController.SendData(pcCommand, 8);
-//		GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"精密电流源连接成功!");
-//		BOOL bRet, close;
-//		pcCommand[10] = 'F';
-//		close = m_cComPortCurrentSource.SendData(pcCommand, 20);
-//		if (close) {
-//			bRet = m_cComPortCurrentSource.ClosePort();
-//			if (bRet)
-//			{
-//				GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"精密电流源串口关闭成功！");
-//				m_iSelfChecking = false;
-//			}
-//			else
-//				GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"精密电流源串口关闭失败！");
-//
-//			GetDlgItem(IDC_STATIC_CURRENTSOURCE_CONNECT)->SetWindowTextW(L"连接电流源");
-//			return;
-//		}
-//
-//	}
-//	//int num = m_cComboLaserCtl.GetCurSel();
-//	::GetPrivateProfileString(_T("System Parameters"), _T("ComboCurren"), _T("0"), str.GetBuffer(20), 20, _T(".//config.ini"));
-//	int num = _ttoi(str);//字符串转int
-//	//int num = m_iCurrentsource;
-//	if (num >= 9)
-//	{
-//		pcCommName.Format(_T("\\\\.\\COM%d"), num + 1);
-//	}
-//	else
-//	{
-//		pcCommName.Format(L"COM%d", num + 1);
-//	}
-//	m_bValidVerify = m_cComPortCurrentSource.OpenPort((LPCWSTR)pcCommName, false);  //打开串口
-//	if (!m_bValidVerify)
-//	{
-//		GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"精密电流源连接失败!");
-//		return;
-//	}
-//	m_bValidVerify = m_cComPortCurrentSource.SetPortParm(9600);//串口波特率设置为9600
-//	if (!m_bValidVerify)
-//	{
-//		GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"通信设置失败!");
-//		m_cComPortCurrentSource.ClosePort();
-//		return;
-//	}
-//	else
-//	{
-//		DWORD dwRev = 0;
-//		/*MakeLaserControllCommand((PBYTE)pcCommand, 0xA0, 0x000000);
-//		m_bValidVerify = m_cComPortLaserController.SendData(pcCommand, 8);
-//		MakeLaserControllCommand((PBYTE)pcCommand, 0xA1, 0x000000);*/
-//		//pcCommand[1] = 'O';
-//		m_bValidVerify = m_cComPortCurrentSource.SendData(pcCommand, 20);
-//		//m_bValidVerify = m_cComPortCurrentSource.SendData(pcCommand, 4);
-//		//m_bValidVerify = m_cComPortCurrentSource.SendData(pcCommand, 4);
-//		if (m_bValidVerify)
-//		{
-//			//m_cComPortLaserController.RecData(pcCommand, 32, &dwRev);
-//			GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"精密电流源连接设置成功!");
-//			GetDlgItem(IDC_STATIC_CURRENTSOURCE_CONNECT)->SetWindowTextW(L"断开电流源");
-//			m_iSelfChecking = true;
-//			GetDlgItem(IDC_STATIC_CURRENTSOURCE_CONNECT)->RedrawWindow();
-//			return;
-//		}
-//		//MakeLaserControllCommand((PBYTE)pcCommand, 0x7E, 0x000000);
-//
-//		//m_bValidVerify = m_cComPortLaserController.SendData(pcCommand, 8);
-//		//if (m_bValidVerify)
-//		//{
-//		//	//MakeLaserControllCommand((PBYTE)pcCommand, 0xE0, 0x000000); 
-//		//	//m_bValidVerify = m_cComPortLaserController.SendData(pcCommand, 8);
-//		//	m_cComPortLaserController.RecData(pcCommand, 32, &dwRev);
-//		//	GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"激光控制器恒温模式设置成功!");
-//		//	m_cEditWavelengthFixed.EnableWindow(1);
-//		//	m_cEditLaserPower.EnableWindow(1);
-//		//	GetDlgItem(IDC_STATIC_START)->SetWindowTextW(L"断开激光器");
-//		//	m_bLaserControllerConnected = true;
-//		//	GetDlgItem(IDC_STATIC_START)->RedrawWindow();
-//		//	return;
-//		//}
-//	}
-//	m_cComPortCurrentSource.ClosePort();
-//	GetDlgItem(IDC_STATIC_START)->RedrawWindow();
-//}
-
-
-//void CPowerMeterDlg::OnStnClickedStaticMultimeterConnect()//连接万用表
-//{
-//	// TODO: 在此添加控件通知处理程序代码
-//	CString str, pcCommName;
-//	char pcCommand[20] = { '$','$', 'R', 'E','A','D','V','L','T','R','A','N','G','E','#','#'};
-//	if (m_bMultimeterConnect)
-//	{
-//		//MakeLaserControllCommand((PBYTE)pcCommand, 0xA3, 0x000000);//disable current 
-//		//m_cComPortLaserController.SendData(pcCommand,4);
-//		//MakeLaserControllCommand((PBYTE)pcCommand, 0xA6, 0x000000);//set to local
-//		//m_cComPortLaserController.SendData(pcCommand, 8);
-//		GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"万用表连接成功!");
-//		BOOL bRet;
-//		bRet = m_cComPortMultimeter.ClosePort();
-//		if (bRet)
-//		{
-//			GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"万用表串口关闭成功！");
-//			m_bMultimeterConnect = false;
-//		}
-//		else
-//			GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"万用表串口关闭失败！");
-//
-//		GetDlgItem(IDC_STATIC_MULTIMETER_CONNECT)->SetWindowTextW(L"连接万用表");
-//		return;
-//	}
-//
-//	::GetPrivateProfileString(_T("System Parameters"), _T("ComboMultimeter"), _T("0"), str.GetBuffer(20), 20, _T(".//config.ini"));
-//	int num = _ttoi(str);//字符串转int
-//	if (num >= 9)
-//	{
-//		pcCommName.Format(_T("\\\\.\\COM%d"), num + 1);
-//	}
-//	else
-//	{
-//		pcCommName.Format(L"COM%d", num + 1);
-//	}
-//	m_bValidVerify = m_cComPortMultimeter.OpenPort((LPCWSTR)pcCommName, false);  //打开串口
-//	if (!m_bValidVerify)
-//	{
-//		GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"万用表连接失败!");
-//		return;
-//	}
-//	m_bValidVerify = m_cComPortMultimeter.SetPortParm(115200);//串口波特率设置为115200
-//	if (!m_bValidVerify)
-//	{
-//		GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"通信设置失败!");
-//		m_cComPortMultimeter.ClosePort();
-//		return;
-//	}
-//	else
-//	{
-//		DWORD dwRev = 0;
-//		//pcCommand[1] = 'O';
-//		m_bValidVerify = m_cComPortMultimeter.SendData(pcCommand, 18);
-//		if (m_bValidVerify)
-//		{
-//			GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW(L"万用表连接设置成功!");
-//			GetDlgItem(IDC_STATIC_MULTIMETER_CONNECT)->SetWindowTextW(L"断开万用表");
-//			m_bMultimeterConnect = true;
-//			GetDlgItem(IDC_STATIC_MULTIMETER_CONNECT)->RedrawWindow();
-//			return;
-//		}
-//	}
-//	m_cComPortMultimeter.ClosePort();
-//	GetDlgItem(IDC_STATIC_START)->RedrawWindow();
-//}
-
-
 void CPowerMeterDlg::OnBnClickedCheck()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -678,61 +472,6 @@ void CPowerMeterDlg::OnBnClickedCheck()
 	}	
 }
 
-
-//void CPowerMeterDlg::OnStnClickedStaticGpib488Connect()
-//{
-//	// TODO: 在此添加控件通知处理程序代码
-//	#define GPIB0                 0        // Board handle
-//	#define ARRAYSIZE             27       // Size of read buffer
-//	#define BDINDEX               0        // Board Index
-//	#define PRIMARY_ADDR_OF_PPS   5        // Primary address of device
-//	#define NO_SECONDARY_ADDR     0        // Secondary address of device
-//	#define TIMEOUT               T10s     // Timeout value = 10 seconds
-//	#define EOTMODE               1        // Enable the END message
-//	#define EOSMODE               0        // Disable the EOS mode
-//
-//	if (!m_bDevValid) {
-//		m_iDev = ibdev(BDINDEX, PRIMARY_ADDR_OF_PPS, NO_SECONDARY_ADDR,
-//			TIMEOUT, EOTMODE, EOSMODE);
-//		m_bDevValid = true;
-//	}
-//	static char ValueStr[ARRAYSIZE + 1];
-//	//string Str_rev;
-//	ibwrt(m_iDev, "*IDN?\r\n", 7L);
-//	//ibwrt(Dev, "D10Measurements:\r", 17L);
-//	//if (Ibsta() & ERR)
-//	//{
-//	//	GPIBCleanup(Dev, "Unable to write to the Power Supply");
-//	//}
-//	ibrd(m_iDev, ValueStr, ARRAYSIZE);
-//	GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW((LPCTSTR)(CString)ValueStr);
-//	ibwrt(m_iDev, "D3Measurements:\r", 17L);
-//	//if (Ibsta() & ERR)
-//	//{
-//	//	GPIBCleanup(Dev, "Unable to read data from Power Supply");
-//	//}
-//	//ValueStr[Ibcnt() - 1] = '\0';
-//	//printf("Data read: %s\n", ValueStr);
-//}
-
-//void GPIBCleanup(int Dev, const char * ErrorMsg)
-//{
-//	static char ErrorMnemonic[29][5] = {
-//		"EDVR", "ECIC", "ENOL", "EADR", "EARG",
-//		"ESAC", "EABO", "ENEB", "EDMA", "",
-//		"EOIP", "ECAP", "EFSO", "",     "EBUS",
-//		"ESTB", "ESRQ", "",     "",      "",
-//		"ETAB", "ELCK", "EARM", "EHDL",  "",
-//		"",     "EWIP", "ERST", "EPWR" };
-//	printf("Error : %s\nibsta = 0x%x iberr = %d (%s)\n",
-//		ErrorMsg, Ibsta(), Iberr(), ErrorMnemonic[Iberr()]);
-//	if (Dev != -1)
-//	{
-//		printf("Cleanup: Taking device off-line\n");
-//		ibonl(Dev, 0);
-//	}
-//}
-
 void CPowerMeterDlg::OnStnClickedStaticSelfcheck()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -757,23 +496,6 @@ void CPowerMeterDlg::OnStnClickedStaticSelfcheck()
 	}
 	GetDlgItem(IDC_STATIC_SELFCHECK)->RedrawWindow();
 }
-
-//void CPowerMeterDlg::OnStnClickedStaticGpib488Connect2()
-//{
-//	// TODO: 在此添加控件通知处理程序代码
-//	static char ValueStr[ARRAYSIZE + 1];
-//	if (m_bDevValid) {
-//		//ibwrt(Dev, "D10Measurements:\r", 17L);
-//		ibrd(m_iDev, ValueStr, 123);
-//		GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW((LPCTSTR)(L"测量值:" + (CString)ValueStr));
-//		//ibrd(Dev, ValueStr, ARRAYSIZE);
-//		//GetDlgItem(IDC_STATIC_STATUS)->SetWindowTextW((LPCTSTR)ValueStr);
-//	}
-//	else {
-//
-//	}
-//}
-
 
 void CPowerMeterDlg::GetConfigFromINI()
 {

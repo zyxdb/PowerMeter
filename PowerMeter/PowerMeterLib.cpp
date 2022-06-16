@@ -2,11 +2,34 @@
 #include "stdafx.h"
 #include "windows.h"
 #include "PowerMeter.h"
-#include "commons.h"
-#include <string>
-#include "PowerMeterLib.h"
 #include "PowerMeterDlg.h"
+#include "PowerMeterLib.h"
 #include "GPIB\ni4882.h"
+#include <string>
+
+bool m_bQJ58Connect = false;//电桥开关
+bool m_bMultimeterConnect = false;//万用表开关
+bool m_bCurrentSourceConnect = false;//精密电流源开关
+bool m_bShutterConnect = false;//快门开关
+bool m_bExtCtrlConnect = false;//额外控制开关
+bool m_bPDAConnect = false;//二极管开关
+
+int  m_iDev;//电桥
+Cport	m_cComPortCurrentSource;//精密电流源
+Cport	m_cComPortMultimeter;//万用表
+Cport	m_cComPortShutter;//快门
+Cport	m_cComPortExtCtrl;//额外控制
+Cport	m_cComPortPDA;//二极管
+
+BOOL bEleBridgeCheck();
+BOOL bMultiMeterCheck(CPowerMeterDlg *pdlgMain);
+BOOL bCurrentSourceCheck(CPowerMeterDlg *pdlgMain);
+BOOL bShutterCheck(CPowerMeterDlg *pdlgMain);
+BOOL bPDACheck(CPowerMeterDlg *pdlgMain);
+BOOL bExtCtrlCheck(CPowerMeterDlg *pdlgMain);
+
+double temperatureMeasure(CPowerMeterDlg *pdlgMain);
+double VoltageMeasure(CPowerMeterDlg *pdlgMain);
 
 void SelfCheckThread(LPVOID lpParameter)
 {
@@ -528,7 +551,6 @@ BOOL bShutterCheck(CPowerMeterDlg *pdlgMain) {
 	// 快门自检程序
 	CString str, pcCommName;
 	bool m_bValidVerify;
-	//char pcCommand[20] = { 'A','T', 'V' , ',','S','E','T',',','A','O','N',',','0','0','0','0','0','0','0',';' };
 	char sendOpen[1] = { 0xea };// 全开指令
 	char sendClose[1] = { 0x0a };// 全关指令
 

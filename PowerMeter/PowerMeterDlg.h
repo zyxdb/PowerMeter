@@ -1,3 +1,6 @@
+#ifndef POWERMETERDLG_H
+#define POWERMETERDLG_H
+
 #pragma once
 #include "Commons.h"
 #include "ChartCtrl/ChartCtrl.h"
@@ -43,7 +46,7 @@ protected:
 public:
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 	afx_msg void OnStnClickedStaticStart();
-	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	//afx_msg void OnTimer(UINT_PTR nIDEvent);
 	LRESULT		 OnThreadMessage(WPARAM wParam, LPARAM lParam);
 	void GetConfigFromINI();
 	void SaveConfigToINI();
@@ -59,8 +62,6 @@ public:
 	CFont	m_cFontValue;
 
 	bool m_bInMesuring;//测量开关
-
-	//int  m_iDev;
 	bool m_bDevValid = false;
 
 	CChartCtrl m_ChartCtrl;
@@ -84,12 +85,12 @@ public:
 
 	CImage m_cImgLogo;
 	CStatic m_cStaticLogo;
-	afx_msg void OnStnClickedStaticCurrentsourceConnect();
-	afx_msg void OnStnClickedStaticMultimeterConnect();
+	//afx_msg void OnStnClickedStaticCurrentsourceConnect();
+	//afx_msg void OnStnClickedStaticMultimeterConnect();
 	afx_msg void OnBnClickedCheck();
-	afx_msg void OnStnClickedStaticGpib488Connect();
+	//afx_msg void OnStnClickedStaticGpib488Connect();
 	afx_msg void OnStnClickedStaticSelfcheck();
-	afx_msg void OnStnClickedStaticGpib488Connect2();
+	//afx_msg void OnStnClickedStaticGpib488Connect2();
 	CString m_csComPortCurrentSource;
 	CString m_csComPortPDA;
 	CString m_csComMultimeter;
@@ -107,6 +108,7 @@ public:
 	double m_dbPidParamC;
 	CString m_csResult;
 	int		m_iSelfChecking;
+	// 预估待测光功率
 	double m_dbLightPowerEstimate;
 	double m_dbLightPowerMeasue;
 	double m_dbLightTemperature;
@@ -122,3 +124,5 @@ public:
 	double m_dbVoltage;
 	double m_dbOutputCurrent;
 };
+
+#endif

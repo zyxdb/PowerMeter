@@ -21,6 +21,7 @@ protected:
 
 	DECLARE_MESSAGE_MAP()
 public:
+	// 用户输入的预估待测光功率
 	double m_dbLightPowerEstimated;
 	afx_msg void OnBnClickedOk();
 };
