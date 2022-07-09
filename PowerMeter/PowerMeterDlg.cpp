@@ -383,6 +383,7 @@ void CPowerMeterDlg::OnStnClickedStaticStart()//开始测量
 		cEstLPDlg.m_dbLightPowerEstimated = m_dbLightPowerEstimate;
 		if (cEstLPDlg.DoModal() == IDOK)
 		{
+			// 输入待测光功率预估值，以此值作为测量的起点。
 			m_dbLightPowerEstimate = cEstLPDlg.m_dbLightPowerEstimated;
 			m_bInMesuring = true;
 			hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)MeasureThread, this, 0, NULL);
@@ -676,17 +677,19 @@ LRESULT CPowerMeterDlg::OnThreadMessage(WPARAM wParam, LPARAM lParam)
 	case THREAD_MEASURE_DATA:
 		MeasureData MeasureData = *PMeasureData(lParam);
 
+		// 温度测量值测量成功
 		if (MeasureData.bFlag & (1 << LineSerie_Temperature))
 		{
 			m_pLineSerie_Temperature->AddPoint(MeasureData.dwIdex, MeasureData.dbTemperature);
-			m_dbTemperature = floor(MeasureData.dbTemperature *1000.0 + 0.5)/1000.0;
+			m_dbTemperature = floor(MeasureData.dbTemperature *1000.0 + 0.5)/1000.0; // 向下取整
 		}
+		// 电压值测量成功
 		if (MeasureData.bFlag & (1 << LineSerie_Voltage))
 		{
 			m_pLineSerie_Voltage->AddPoint(MeasureData.dwIdex, MeasureData.dbVoltage);
 			m_dbVoltage = floor(MeasureData.dbVoltage *1000.0 + 0.5) / 1000.0;
 		}
-
+		// 电流值测量成功
 		if (MeasureData.bFlag & (1 << LineSerie_OutputCurrent))
 		{
 			m_pLineSerie_OutputCurrent->AddPoint(MeasureData.dwIdex, MeasureData.dbOutputCurrent);

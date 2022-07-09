@@ -98,22 +98,22 @@ public:
 	CString m_csComPortExtCtrl;
 	double m_dbHeaterStability;
 	double m_dbHeaterStableTime;
-	double m_dbHeaterResCheck;
-	double m_dbHeaterResHeat;
+	double m_dbHeaterResCheck;			// 采样电阻值
+	double m_dbHeaterResHeat;			// 加热电阻值
 	double m_dbHeaterPowerStep;
-	double m_dbPidStability;
-	double m_dbPidStableTime;
-	double m_dbPidParamA;
-	double m_dbPidParamB;
-	double m_dbPidParamC;
+	double m_dbPidStability;			// PID稳定度
+	double m_dbPidStableTime;			// PID稳定时间
+	double m_dbPidParamA;				// PID参数A
+	double m_dbPidParamB;				// PID参数B
+	double m_dbPidParamC;				// PID参数C
 	CString m_csResult;
 	int		m_iSelfChecking;
-	// 预估待测光功率
-	double m_dbLightPowerEstimate;
-	double m_dbLightPowerMeasue;
-	double m_dbLightTemperature;
-	double m_dbElectrHighTemperature;
-	double m_dbElectrHighVoltage;
+	
+	double m_dbLightPowerEstimate;		// 预估待测光功率
+	double m_dbLightPowerMeasue;		// 光功率测量值
+	double m_dbLightTemperature;		// 光加热温度 
+	double m_dbElectrHighTemperature;	// 温度测量值
+	double m_dbElectrHighVoltage;		
 	double m_dbElectrHighCurrent;
 	double m_dbElectrHighPower;
 	double m_dbElectrLowTemperature;
@@ -122,7 +122,7 @@ public:
 	double m_dbElectrLowPower;
 	double m_dbTemperature;
 	double m_dbVoltage;
-	double m_dbOutputCurrent;
+	double m_dbOutputCurrent;			// 电功率电流值
 };
 
 #endif

@@ -12,5 +12,7 @@ BOOL  psSetPort(PVOID pHandle, int BaudRate = CBR_9600, int bytesize = 8, int pa
 void  MeasureThread(LPVOID lpParameter);
 void  SelfCheckThread(LPVOID lpParameter);
 DWORD CreateID();
+bool SetCurrent(CPowerMeterDlg *pdlgMain, double measureCurrent,bool switchState);
+bool SetShutter(CPowerMeterDlg *pdlgMain, bool switchState);
 
 #endif
