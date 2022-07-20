@@ -122,7 +122,7 @@ public:
 	double m_dbElectrLowPower;
 	double m_dbTemperature;
 	double m_dbVoltage;
-	double m_dbOutputCurrent;			// 电功率电流值
+	double m_dbOutputCurrent;			// 电流值
 };
 
 #endif
