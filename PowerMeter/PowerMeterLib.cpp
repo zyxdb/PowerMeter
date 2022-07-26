@@ -137,6 +137,7 @@ MeasureData WaitforStable(CPowerMeterDlg *pdlgMain,DWORD dwStart,BOOL bElectricE
 	CString  csString;
 	SYSTEMTIME sysTime;
 	LPARAM  lParam = LPARAM(THREAD_STATE_SUCCESS);
+	// 在当前时刻的误差
 	double dbPidStability = 1, dbHeaterStability = 1;
 	double measureCurrent = 0;
 	DWORD dwTimeBegin, dwTimePeriod;
@@ -156,23 +157,24 @@ MeasureData WaitforStable(CPowerMeterDlg *pdlgMain,DWORD dwStart,BOOL bElectricE
 		// 整体测量启动时间 到 该次测量温度、电压、电流源之前所花费的时间
 		gMeasureData[0].dwIdex = GetTickCount() / 100 - dwStart;
 
-		// 计算温度（失败返回-1）
+		// 测量温度（失败返回-1）
 		gMeasureData[0].dbTemperature = temperatureMeasure(pdlgMain);
 		// 测量失败时，将Flag与0110相与
 		if (gMeasureData[0].dbTemperature < 0) {
 			gMeasureData[0].bFlag &= 6;
 		}
 
-		// 计算电压
+		// 测量电压
 		gMeasureData[0].dbVoltage = VoltageMeasure(pdlgMain);
 		// 测量失败时，将Flag与0101相与
 		if (gMeasureData[0].dbVoltage < 0) {
 			gMeasureData[0].bFlag &= 5;
 		}
 
-		// 计算电流
+		// 测量电流
 		measureCurrent = gMeasureData[0].dbVoltage / pdlgMain->m_dbHeaterResCheck;  // 实际加热电流 = 精密万用表测量电压值 / 采样电阻值
-		gMeasureData[0].dbOutputCurrent = pdlgMain->m_dbOutputCurrent;
+		//gMeasureData[0].dbOutputCurrent = pdlgMain->m_dbOutputCurrent;
+		gMeasureData[0].dbOutputCurrent = measureCurrent;
 		// 测量失败时，将Flag与0011相与
 		if (gMeasureData[0].dbOutputCurrent < 0) {
 			gMeasureData[0].bFlag &= 3;
@@ -193,7 +195,8 @@ MeasureData WaitforStable(CPowerMeterDlg *pdlgMain,DWORD dwStart,BOOL bElectricE
 				pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("计算电流稳定度"));
 				if (dbPidStability < pdlgMain->m_dbPidStability)
 				{
-					//pdlgMain->m_dbOutputCurrent = measureCurrent;
+					// TODO:理论上这里应该使用PID算法，使用PID的A、B、C参数估算出电流源设定值。暂时为图省事先用测量值替代
+					pdlgMain->m_dbOutputCurrent = measureCurrent;
 					TRACE(_T("计算输出电流并输出"));
 					pdlgMain->GetDlgItem(IDC_STATIC_STATUS)->SetWindowText(_T("计算输出电流并输出"));
 					pdlgMain->GetDlgItem(IDC_STATIC_RESULT)->SetWindowText(_T("计算输出电流并输出"));
