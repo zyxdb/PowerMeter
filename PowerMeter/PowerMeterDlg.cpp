@@ -14,11 +14,60 @@
 #include "SysParamDlg.h"
 #include "EstimateLightPowerDlg.h"
 #include "GPIB\ni4882.h"
+#include <fstream>
+#include <sstream>
+#include<numeric>
 
 //static void GPIBCleanup(int Dev, const char * ErrorMsg);
 
 // CPowerMeterDlg 对话框
 
+void save(CPowerMeterDlg *pdlgMain) {
+	CTime time = CTime::GetCurrentTime(); ///构造CTime对象
+	CString m_strTime = time.Format("%Y_%m%d_%H%M");
+
+	CString csFileName;
+
+	// 获取当前exe文件路径，以path保存
+	char exeFullPath[MAX_PATH]; // Full path
+	std::string strPath = "";
+	GetModuleFileNameA(NULL, exeFullPath, MAX_PATH);
+	strPath = (std::string)exeFullPath;    // Get full path of the file
+	int pos = strPath.find_last_of('\\', strPath.length());
+	std::string path = strPath.substr(0, pos) + "\\";  // Return the directory without the file name
+
+												  //csFileName = cFileDialog.GetPathName();
+	csFileName = path.c_str();
+	csFileName.AppendFormat(m_strTime);
+	// 判断是否有重名文件夹，没有的话就新建一个文件夹
+	if (!PathIsDirectory(csFileName))
+	{
+		::CreateDirectory(csFileName, 0);
+	}
+	csFileName.AppendFormat(L"\\");
+	csFileName.AppendFormat(m_strTime);
+	TChartString fileName;
+	CRect crect;
+	CString pic_path = csFileName;
+	//int q = csFileName.Find('.');
+	//w = csFileName.Left(q);
+	// 保存图片的操作
+	pic_path.AppendFormat(L".png");
+	fileName = pic_path;
+	crect.SetRect(0, 0, 1920, 1080);                      //set the size of the image
+	pdlgMain->m_ChartCtrl.SaveAsImage(fileName, crect, 32, GUID_NULL); //savethe image
+
+	// 保存csv文件的操作
+	csFileName.AppendFormat(L".csv");
+	std::ofstream outFile;
+	outFile.open(csFileName, std::ios::out); // 打开模式可省略  
+	outFile << "序号" << ',' << "电压值/mV" << ',' << "电流值/mA" << "," <<  "方差" << std::endl;
+	for (int i = 0; i < pdlgMain->xpAxisNums.size() - 1; i++)
+	{
+		outFile << pdlgMain->xpAxisNums[i] << ',' << pdlgMain->voltageNums[i] << ',' << pdlgMain->currentNums[i] << ',' << pdlgMain->dcNums[i] << std::endl;
+	}
+	outFile.close();
+}
 
 IMPLEMENT_DYNAMIC(CPowerMeterDlg, CDialogEx)
 CPowerMeterDlg *pPSDlg = NULL;
@@ -100,6 +149,7 @@ BEGIN_MESSAGE_MAP(CPowerMeterDlg, CDialogEx)
 	//ON_STN_CLICKED(IDC_STATIC_MULTIMETER_CONNECT, &CPowerMeterDlg::OnStnClickedStaticMultimeterConnect)
 	//ON_STN_CLICKED(IDC_STATIC_GPIB488_CONNECT, &CPowerMeterDlg::OnStnClickedStaticGpib488Connect)
 	//ON_STN_CLICKED(IDC_STATIC_GPIB488_CONNECT2, &CPowerMeterDlg::OnStnClickedStaticGpib488Connect2)
+	ON_BN_CLICKED(IDC_BUTTON2, &CPowerMeterDlg::OnBnClickedButton2)
 END_MESSAGE_MAP()
 
 
@@ -133,10 +183,9 @@ BOOL CPowerMeterDlg::OnInitDialog()
 	pAxis = m_ChartCtrl.CreateStandardAxis(CChartCtrl::LeftAxis);
 	pAxis->SetAutomatic(true);
 
-	
-	m_pLineSerie_Temperature = m_ChartCtrl.CreateLineSerie();//电桥的曲线
-	m_pLineSerie_Temperature->SetColor(ColorTemperature);//电桥的颜色
-	m_pLineSerie_Temperature->SetName(_T("电桥电阻"));//
+	//m_pLineSerie_Temperature = m_ChartCtrl.CreateLineSerie();//电桥的曲线
+	//m_pLineSerie_Temperature->SetColor(ColorTemperature);//电桥的颜色
+	//m_pLineSerie_Temperature->SetName(_T("电桥电阻"));//
 
 	m_pLineSerie_Voltage = m_ChartCtrl.CreateLineSerie();//电压的曲线
 	m_pLineSerie_Voltage->SetColor(ColorVoltage);//电压的颜色
@@ -145,7 +194,6 @@ BOOL CPowerMeterDlg::OnInitDialog()
 	m_pLineSerie_OutputCurrent = m_ChartCtrl.CreateLineSerie();//输出电流的曲线
 	m_pLineSerie_OutputCurrent->SetColor(ColorOutputCurrent);//电流颜色设为蓝色
 	m_pLineSerie_OutputCurrent->SetName(_T("输出电流"));//设置电流曲线名
-
 
 	RECT rect;
 	GetDlgItem(IDC_EDIT_LIGHT_POWER_MEASUR)->GetClientRect(&rect);
@@ -376,7 +424,7 @@ void CPowerMeterDlg::OnStnClickedStaticStart()//开始测量
 	else
 	{
 
-		m_pLineSerie_Temperature->ClearSerie();
+		//m_pLineSerie_Temperature->ClearSerie();
 		m_pLineSerie_Voltage->ClearSerie();
 		m_pLineSerie_OutputCurrent->ClearSerie();
 
@@ -448,11 +496,11 @@ void CPowerMeterDlg::OnBnClickedCheck()
 
 	if (m_bCheckElectricBridge)
 	{
-		m_pLineSerie_Temperature->SetVisible(TRUE);
+		//m_pLineSerie_Temperature->SetVisible(TRUE);
 	}
 	else
 	{
-		m_pLineSerie_Temperature->SetVisible(FALSE);
+		//m_pLineSerie_Temperature->SetVisible(FALSE);
 	}
 
 	if (m_bCheckVoltage)
@@ -676,24 +724,60 @@ LRESULT CPowerMeterDlg::OnThreadMessage(WPARAM wParam, LPARAM lParam)
 
 	case THREAD_MEASURE_DATA:
 		MeasureData MeasureData = *PMeasureData(lParam);
-
-		// 温度测量值测量成功
-		if (MeasureData.bFlag & (1 << LineSerie_Temperature))
-		{
-			m_pLineSerie_Temperature->AddPoint(MeasureData.dwIdex, MeasureData.dbTemperature);
-			m_dbTemperature = floor(MeasureData.dbTemperature *1000.0 + 0.5)/1000.0; // 向下取整
+		if (xpAxisNums.size() == 10000) {
+			xpAxisNums.pop_front();
+			voltageNums.pop_front();
+			currentNums.pop_front();
 		}
+		if (dcNums.size() == 1000) {
+			dcNums.pop_front();
+		}
+		xpAxisNums.emplace_back(++xAxis);
+		if ((int)xAxis % 2000 == 0) save(this);
+		//// 温度测量值测量成功
+		//if (MeasureData.bFlag & (1 << LineSerie_Temperature))
+		//{
+		//	m_pLineSerie_Temperature->AddPoint(MeasureData.dwIdex, MeasureData.dbTemperature);
+		//	m_dbTemperature = floor(MeasureData.dbTemperature *1000.0 + 0.5)/1000.0; // 向下取整
+		//}
 		// 电压值测量成功
 		if (MeasureData.bFlag & (1 << LineSerie_Voltage))
 		{
-			m_pLineSerie_Voltage->AddPoint(MeasureData.dwIdex, MeasureData.dbVoltage);
+			double y = MeasureData.dbVoltage;
+			m_pLineSerie_Voltage->AddPoint(xAxis, y);
+			//m_pLineSerie_Voltage->AddPoint(MeasureData.dwIdex, MeasureData.dbVoltage);
 			m_dbVoltage = floor(MeasureData.dbVoltage *1000.0 + 0.5) / 1000.0;
+			voltageNums.emplace_back(y);
 		}
+		if (voltageNums.size() > 0) {
+			// 如果不足1000个数，就取0
+			int minPos = min(0, voltageNums.size() - 1000);
+			double sum = 0, avg = 0, DCsum = 0;
+			// 计算最近1000个值的累加值
+			sum = std::accumulate(voltageNums.begin() + minPos, voltageNums.end(), 0.0);
+			// 实际取了多少个数做运算
+			int size = voltageNums.size() - minPos;
+			//int cnt = 0;
+			//for (int i = voltageNums.size() - 1; i >= minPos; i--) {
+			//	sum += dcNums[i];
+			//	cnt++;
+			//}
+			avg = sum / max(size, 1); // 防止除以0
+			for (int i = voltageNums.size() - 1; i >= minPos; i--) {
+				DCsum += pow(voltageNums[i] - avg, 2);
+			}
+			double DC = pow((DCsum / max(size, 1)), 0.5);
+			dcNums.emplace_back(DC);
+		}
+
 		// 电流值测量成功
 		if (MeasureData.bFlag & (1 << LineSerie_OutputCurrent))
 		{
-			m_pLineSerie_OutputCurrent->AddPoint(MeasureData.dwIdex, MeasureData.dbOutputCurrent);
+			double y = MeasureData.dbOutputCurrent;
+			m_pLineSerie_OutputCurrent->AddPoint(xAxis, y);
+			//m_pLineSerie_OutputCurrent->AddPoint(MeasureData.dwIdex, MeasureData.dbOutputCurrent);
 			m_dbOutputCurrent= floor(MeasureData.dbOutputCurrent *1000.0 +0.5) / 1000.0;
+			currentNums.emplace_back(y);
 		}
 		switch (MeasureData.bState)
 		{
@@ -720,4 +804,10 @@ LRESULT CPowerMeterDlg::OnThreadMessage(WPARAM wParam, LPARAM lParam)
 	}
 	UpdateData(FALSE);
 	return 0;
+}
+
+void CPowerMeterDlg::OnBnClickedButton2()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	save(this);
 }

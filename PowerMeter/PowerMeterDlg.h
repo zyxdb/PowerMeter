@@ -5,6 +5,7 @@
 #include "Commons.h"
 #include "ChartCtrl/ChartCtrl.h"
 #include "afxwin.h"
+#include <deque>
 
 // CPowerMeterDlg 对话框
 
@@ -65,7 +66,7 @@ public:
 	bool m_bDevValid = false;
 
 	CChartCtrl m_ChartCtrl;
-	CChartLineSerie *m_pLineSerie_Temperature;
+	//CChartLineSerie *m_pLineSerie_Temperature;
 	CChartLineSerie *m_pLineSerie_Voltage;
 	CChartLineSerie *m_pLineSerie_OutputCurrent;
 
@@ -123,6 +124,10 @@ public:
 	double m_dbTemperature;
 	double m_dbVoltage;
 	double m_dbOutputCurrent;			// 电流值
+	double xAxis = -1;
+	std::deque <double> xpAxisNums, voltageNums, currentNums,dcNums;
+	double avgNum = 0;
+	afx_msg void OnBnClickedButton2();
 };
 
 #endif
