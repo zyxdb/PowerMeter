@@ -724,16 +724,14 @@ LRESULT CPowerMeterDlg::OnThreadMessage(WPARAM wParam, LPARAM lParam)
 
 	case THREAD_MEASURE_DATA:
 		MeasureData MeasureData = *PMeasureData(lParam);
-		if (xpAxisNums.size() == 10000) {
+		if ((int)xpAxisNums.size() % 1000 == 0) save(this);
+		if (xpAxisNums.size() == 3000) {
 			xpAxisNums.pop_front();
 			voltageNums.pop_front();
 			currentNums.pop_front();
-		}
-		if (dcNums.size() == 1000) {
 			dcNums.pop_front();
 		}
 		xpAxisNums.emplace_back(++xAxis);
-		if ((int)xAxis % 2000 == 0) save(this);
 		//// 温度测量值测量成功
 		//if (MeasureData.bFlag & (1 << LineSerie_Temperature))
 		//{
@@ -749,24 +747,30 @@ LRESULT CPowerMeterDlg::OnThreadMessage(WPARAM wParam, LPARAM lParam)
 			m_dbVoltage = floor(MeasureData.dbVoltage *1000.0 + 0.5) / 1000.0;
 			voltageNums.emplace_back(y);
 		}
+
 		if (voltageNums.size() > 0) {
-			// 如果不足1000个数，就取0
-			int minPos = min(0, voltageNums.size() - 1000);
-			double sum = 0, avg = 0, DCsum = 0;
-			// 计算最近1000个值的累加值
-			sum = std::accumulate(voltageNums.begin() + minPos, voltageNums.end(), 0.0);
-			// 实际取了多少个数做运算
-			int size = voltageNums.size() - minPos;
-			//int cnt = 0;
+			//// 如果不足1000个数，就取0
+			//int minPos = max(0, (int)voltageNums.size() - 1000);
+			//double sum = 0, avg = 0, DCsum = 0;
+			//// 计算最近1000个值的累加值
+			//
+			//// 实际取了多少个数做运算
+			//int size = voltageNums.size() - minPos;
+			////int cnt = 0;
+			////for (int i = voltageNums.size() - 1; i >= minPos; i--) {
+			////	sum += dcNums[i];
+			////	cnt++;
+			////}
+			//avg = sum / max(size, 1); // 防止除以0
 			//for (int i = voltageNums.size() - 1; i >= minPos; i--) {
-			//	sum += dcNums[i];
-			//	cnt++;
+			//	DCsum += pow(voltageNums[i] - avg, 2);
 			//}
-			avg = sum / max(size, 1); // 防止除以0
-			for (int i = voltageNums.size() - 1; i >= minPos; i--) {
+			double sum = std::accumulate(voltageNums.begin(), voltageNums.end(), 0.0);
+			double avg = sum / voltageNums.size(), DCsum = 0;
+			for (int i = 0; i < voltageNums.size(); i++) {
 				DCsum += pow(voltageNums[i] - avg, 2);
 			}
-			double DC = pow((DCsum / max(size, 1)), 0.5);
+			double DC = pow((DCsum / voltageNums.size()), 0.5);
 			dcNums.emplace_back(DC);
 		}
 
